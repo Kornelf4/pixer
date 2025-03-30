@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Draggable and Resizable Element</title>
+    <title>Pixer</title>
     <style>
         #myElement {
             position: absolute;
@@ -50,9 +50,6 @@
 
             return r + ", " + g + ", " + b;
         }
-        /*function rgbToRgba(rgbColor, alpha) {
-            return (rgbColor.split(")")[0] + ", " + alpha + ")").replace("rgb", "rgba");
-        }*/
         function hexToRgba(hex, alpha) {
             return "rgba(" + hexToRgb(hex.split("#")[1]) + ", " + alpha + ")"
         }

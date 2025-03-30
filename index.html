@@ -34,9 +34,7 @@
     Vertical symmetry: <input type="checkbox" id="ver">
     <canvas id="expC" width="64px" height="64px"></canvas>
     <canvas id="myElement" width="64px" height="64px"></canvas>
-
     <script>
-        // Get the element
         class Action {
             constructor(locs, from, to) {
                 this.loc = locs;
@@ -70,7 +68,6 @@
         var canvas = document.getElementById("myElement");
         var ctx = canvas.getContext("2d");
         var actions = [];
-        // Variables to store initial mouse position and element dimensions
         var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
         window.addEventListener("keydown", (e) => {
             if ((e.key).toLowerCase() == "z") {
@@ -108,31 +105,24 @@
             if (actions.length == 0) return;
             let lastAct = actions[0];
             for (let i = 0; i < lastAct.length; i++) {
-                //if(map[lastAct[i].loc.y][lastAct[i].loc.x] == lastAct[i].to || map[lastAct[i].loc.y][lastAct[i].loc.x] == "rgba(0, 0, 0, 0)") {
                 map[lastAct[i].loc.y][lastAct[i].loc.x] = lastAct[i].from
-                //}
             }
             actions.splice(0, 1);
             drawMap()
         }
         let map = gen2dArray(spriteS, spriteS, "rgba(0, 0, 0, 0)");
-        // Function to start dragging
         function dragMouseDown(e) {
             isClicking = true;
             e = e || window.event;
-            //e.preventDefault();
-            // Get the mouse cursor position at startup:
             pos3 = e.clientX;
             pos4 = e.clientY;
             if (mode == "move") {
                 document.onmouseup = closeDragElement;
-                // Call a function whenever the cursor moves:
                 document.onmousemove = elementDrag;
             }
             let realSize = parseInt(document.getElementById("myElement").width) / spriteS;
             if (mode == "draw" || mode == "rubber") {
                 document.onmouseup = closeDragElement;
-                // Call a function whenever the cursor moves:
                 document.onmousemove = elementDrag;
                 if (mode == "draw") {
                     pos3 = e.clientX;
@@ -211,18 +201,15 @@
             }
         }
 
-        // Function to move the element
         function elementDrag(e) {
 
             e = e || window.event;
             e.preventDefault();
             if (mode == "move") {
-                // Calculate the new cursor position:
                 pos1 = pos3 - e.clientX;
                 pos2 = pos4 - e.clientY;
                 pos3 = e.clientX;
                 pos4 = e.clientY;
-                // Set the element's new position:
                 element.style.top = (element.offsetTop - pos2) + "px";
                 element.style.left = (element.offsetLeft - pos1) + "px";
             }
@@ -264,9 +251,7 @@
             }
         }
 
-        // Function to stop dragging
         function closeDragElement() {
-            // Stop moving when mouse button is released:
             isClicking = false;
             document.onmouseup = null;
             document.onmousemove = null;
@@ -274,22 +259,14 @@
             buffer = []
         }
 
-        // Add event listener to start dragging
         element.onmousedown = dragMouseDown;
-
-        // Function to resize the element with the mouse wheel
         element.addEventListener("wheel", function (event) {
-            // Prevent default behavior
             event.preventDefault();
-
-            // Calculate new width and height based on mouse wheel delta
             var delta = event.deltaY;
             var newWidth = element.width + delta / 10;
             var newHeight = element.height + delta / 10;
 
-            // Set minimum size to prevent element from becoming too small
             if (newWidth > spriteS - 1 && newHeight > spriteS - 1) {
-                // Calculate new top and left positions to keep the center of the element in the same place
                 var newTop = element.offsetTop - delta / 20;
                 var newLeft = element.offsetLeft - delta / 20;
 
@@ -349,13 +326,10 @@
             let div = document.createElement("div");
             var text = getAlphaMap();
             navigator.clipboard.writeText(text).then(function () {
-                //console.log('Async: Copying to clipboard was successful!');
             }, function (err) {
                 console.error('Async: Could not copy text: ', err);
             });
         }
     </script>
-
 </body>
-
 </html>

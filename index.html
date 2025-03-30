@@ -42,6 +42,12 @@
                 this.to = to;
             }
         }
+        function hexCode(color){
+            const rgba = color.replace(/^rgba?\(|\s+|\)$/g, '').split(',');
+            const hex = `#${((1 << 24) + (parseInt(rgba[0]) << 16) + (parseInt(rgba[1]) << 8) + parseInt(rgba[2])).toString(16).slice(1)}`;
+            return hex;
+        }
+
         function hexToRgb(hex) {
             var bigint = parseInt(hex, 16);
             var r = (bigint >> 16) & 255;
@@ -166,7 +172,7 @@
                 const rect = element.getBoundingClientRect();
                 const x = pos3 - rect.left;
                 const y = pos4 - rect.top;
-                document.getElementById("colorC").value = map[Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)][Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length)]
+                document.getElementById("colorC").value = hexCode(map[Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)][Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length)])
             }
             if (mode == "fill") {
                 const rect = element.getBoundingClientRect();

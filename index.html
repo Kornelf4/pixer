@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Draggable and Resizable Element</title>
+    <style>
+        #myElement {
+            position: absolute;
+            background-color: white;
+            border: 1px solid black;
+        }
+
+        #expC {
+            display: none;
+            image-rendering: pixelated;
+        }
+    </style>
+</head>
+
+<body>
+    <input type="button" value="Draw" onclick="mode = 'draw'">
+    <input type="button" value="Move" onclick="mode = 'move'">
+    <input type="button" value="Fill" onclick="mode = 'fill'">
+    <input type="button" value="Get color" onclick="mode = 'getColor'">
+    <input type="button" value="Rubber" onclick="mode = 'rubber'">
+    <input type="button" value="Undo" onclick="back()">
+    <input type="button" value="Clear" onclick="clearAll()">
+    <input type="button" value="Export" onclick="download()">
+    <input type="button" value="Resize & Clear" onclick="resize()">
+    <input type="button" value="Copy AlphaMap to clipboard" onclick="cop()">
+    <input type="color" id="colorC"><br>
+    Alpha: <input type="text" id="alp" width="25px" value="1">
+    Horizontal symmetry: <input type="checkbox" id="hor">
+    Vertical symmetry: <input type="checkbox" id="ver">
+    <canvas id="expC" width="64px" height="64px"></canvas>
+    <canvas id="myElement" width="64px" height="64px"></canvas>
+
+    <script>
+        // Get the element
+        class Action {
+            constructor(locs, from, to) {
+                this.loc = locs;
+                this.from = from;
+                this.to = to;
+            }
+        }
+        function hexToRgb(hex) {
+            var bigint = parseInt(hex, 16);
+            var r = (bigint >> 16) & 255;
+            var g = (bigint >> 8) & 255;
+            var b = bigint & 255;
+
+            return r + ", " + g + ", " + b;
+        }
+        /*function rgbToRgba(rgbColor, alpha) {
+            return (rgbColor.split(")")[0] + ", " + alpha + ")").replace("rgb", "rgba");
+        }*/
+        function hexToRgba(hex, alpha) {
+            return "rgba(" + hexToRgb(hex.split("#")[1]) + ", " + alpha + ")"
+        }
+        function getActualA() {
+            return parseFloat(document.getElementById("alp").value);
+        }
+        var element = document.getElementById("myElement");
+        let spriteS = 64;
+        var mode = "move";
+        let buffer = [];
+        let fillBuffer = [];
+        var isClicking = false;
+        var canvas = document.getElementById("myElement");
+        var ctx = canvas.getContext("2d");
+        var actions = [];
+        // Variables to store initial mouse position and element dimensions
+        var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+        window.addEventListener("keydown", (e) => {
+            if ((e.key).toLowerCase() == "z") {
+            }
+        });
+        element.addEventListener("mousemove", (e) => {
+            ctx.clearRect(0, 0, parseInt(document.getElementById("myElement").width), parseInt(document.getElementById("myElement").height))
+            const rect = element.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            ctx.strokeStyle = "red";
+            drawMap();
+            ctx.beginPath();
+            ctx.strokeRect(Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length) * (parseInt(document.getElementById("myElement").width) / spriteS),
+                Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length) * (parseInt(document.getElementById("myElement").width) / spriteS),
+                parseInt(document.getElementById("myElement").width) / spriteS,
+                parseInt(document.getElementById("myElement").width) / spriteS)
+            ctx.stroke();
+        })
+        function clearAll() {
+            map = gen2dArray(spriteS, spriteS, "rgba(0, 0, 0, 0)");
+            drawMap()
+        }
+        function gen2dArray(width, height, fill) {
+            let res = [];
+            for (let i = 0; i < height; i++) {
+                res.push([]);
+                for (let j = 0; j < width; j++) {
+                    res[res.length - 1].push(fill);
+                }
+            }
+            return res;
+        }
+        function back() {
+            if (actions.length == 0) return;
+            let lastAct = actions[0];
+            for (let i = 0; i < lastAct.length; i++) {
+                //if(map[lastAct[i].loc.y][lastAct[i].loc.x] == lastAct[i].to || map[lastAct[i].loc.y][lastAct[i].loc.x] == "rgba(0, 0, 0, 0)") {
+                map[lastAct[i].loc.y][lastAct[i].loc.x] = lastAct[i].from
+                //}
+            }
+            actions.splice(0, 1);
+            drawMap()
+        }
+        let map = gen2dArray(spriteS, spriteS, "rgba(0, 0, 0, 0)");
+        // Function to start dragging
+        function dragMouseDown(e) {
+            isClicking = true;
+            e = e || window.event;
+            //e.preventDefault();
+            // Get the mouse cursor position at startup:
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+            if (mode == "move") {
+                document.onmouseup = closeDragElement;
+                // Call a function whenever the cursor moves:
+                document.onmousemove = elementDrag;
+            }
+            let realSize = parseInt(document.getElementById("myElement").width) / spriteS;
+            if (mode == "draw" || mode == "rubber") {
+                document.onmouseup = closeDragElement;
+                // Call a function whenever the cursor moves:
+                document.onmousemove = elementDrag;
+                if (mode == "draw") {
+                    pos3 = e.clientX;
+                    pos4 = e.clientY;
+                    const rect = element.getBoundingClientRect();
+                    const x = pos3 - rect.left;
+                    const y = pos4 - rect.top;
+                    actions.unshift([new Action(
+                        {
+                            x: Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length),
+                            y: Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)
+                        },
+                        map[Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)][Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length)],
+                        hexToRgba(document.getElementById("colorC").value, getActualA())
+                    )])
+                    map[Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)][Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length)] = hexToRgba(document.getElementById("colorC").value, getActualA())
+                    if (document.getElementById("hor").checked) map[map.length - 1 - Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)][Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length)] = hexToRgba(document.getElementById("colorC").value, getActualA())
+                    if (document.getElementById("ver").checked) map[Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)][map.length - 1 - Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length)] = hexToRgba(document.getElementById("colorC").value, getActualA())
+                    if (document.getElementById("hor").checked && document.getElementById("ver").checked) map[map.length - 1 - Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)][map.length - 1 - Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length)] = hexToRgba(document.getElementById("colorC").value, getActualA())
+                    drawMap();
+                }
+                if (mode == "rubber") {
+                    pos3 = e.clientX;
+                    pos4 = e.clientY;
+                    const rect = element.getBoundingClientRect();
+                    const x = pos3 - rect.left;
+                    const y = pos4 - rect.top;
+                    actions.unshift([new Action(
+                        {
+                            x: Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length),
+                            y: Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)
+                        },
+                        map[Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)][Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length)],
+                        "rgba(0, 0, 0, 0)"
+                    )])
+                    map[Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)][Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length)] = "rgba(0, 0, 0, 0)";
+                    if (document.getElementById("hor").checked) map[map.length - 1 - Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)][Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length)] = "rgba(0, 0, 0, 0)";
+                    if (document.getElementById("ver").checked) map[Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)][map.length - 1 - Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length)] = "rgba(0, 0, 0, 0)";
+                    if (document.getElementById("ver").checked && document.getElementById("hor").checked) map[map.length - 1 - Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)][map.length - 1 - Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length)] = "rgba(0, 0, 0, 0)";
+                    drawMap();
+                }
+            }
+            if (mode == "getColor") {
+                const rect = element.getBoundingClientRect();
+                const x = pos3 - rect.left;
+                const y = pos4 - rect.top;
+                document.getElementById("colorC").value = map[Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)][Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length)]
+            }
+            if (mode == "fill") {
+                const rect = element.getBoundingClientRect();
+                const x = pos3 - rect.left;
+                const y = pos4 - rect.top;
+                var filterC = map[Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)][Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length)]
+                let a = (actX, actY) => {
+                    if (actX < 0 || actY < 0 || actX > map.length - 1 || actY > map.length - 1) return;
+                    if (map[actY][actX] == filterC) {
+                        fillBuffer.unshift(new Action(
+                            {
+                                x: actX,
+                                y: actY
+                            },
+                            map[actY][actX],
+                            hexToRgba(document.getElementById("colorC").value, getActualA())
+                        ))
+                        map[actY][actX] = hexToRgba(document.getElementById("colorC").value, getActualA());
+
+                        a(actX + 1, actY);
+                        a(actX - 1, actY);
+                        a(actX, actY + 1);
+                        a(actX, actY - 1);
+                    }
+                }
+                a(Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length), Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length))
+                actions.unshift(fillBuffer);
+                fillBuffer = [];
+            }
+        }
+
+        // Function to move the element
+        function elementDrag(e) {
+
+            e = e || window.event;
+            e.preventDefault();
+            if (mode == "move") {
+                // Calculate the new cursor position:
+                pos1 = pos3 - e.clientX;
+                pos2 = pos4 - e.clientY;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                // Set the element's new position:
+                element.style.top = (element.offsetTop - pos2) + "px";
+                element.style.left = (element.offsetLeft - pos1) + "px";
+            }
+            if (mode == "draw") {
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                const rect = element.getBoundingClientRect();
+                const x = pos3 - rect.left;
+                const y = pos4 - rect.top;
+                if (Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length) > spriteS - 1 ||
+                    Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length) > spriteS - 1 ||
+                    Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length) < 0 ||
+                    Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length) < 0) return;
+                buffer.unshift(new Action(
+                    {
+                        x: Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length),
+                        y: Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)
+                    },
+                    map[Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)][Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length)],
+                    hexToRgba(document.getElementById("colorC").value, getActualA())
+                ))
+                map[Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)][Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length)] = hexToRgba(document.getElementById("colorC").value, getActualA());;
+                if (document.getElementById("hor").checked) map[map.length - 1 - Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)][Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length)] = hexToRgba(document.getElementById("colorC").value, getActualA());
+                if (document.getElementById("ver").checked) map[Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)][map.length - 1 - Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length)] = hexToRgba(document.getElementById("colorC").value, getActualA());
+                if (document.getElementById("hor").checked && document.getElementById("ver").checked) map[map.length - 1 - Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)][map.length - 1 - Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length)] = hexToRgba(document.getElementById("colorC").value, getActualA());
+                drawMap();
+            }
+            if (mode == "rubber") {
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                const rect = element.getBoundingClientRect();
+                const x = pos3 - rect.left;
+                const y = pos4 - rect.top;
+                map[Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)][Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length)] = "rgba(0, 0, 0, 0)";
+                if (document.getElementById("hor").checked) map[map.length - 1 - Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)][Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length)] = "rgba(0, 0, 0, 0)";
+                if (document.getElementById("ver").checked) map[Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)][map.length - 1 - Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length)] = "rgba(0, 0, 0, 0)";
+                if (document.getElementById("ver").checked && document.getElementById("hor").checked) map[map.length - 1 - Math.floor((y / parseInt(document.getElementById("myElement").width)) * map.length)][map.length - 1 - Math.floor((x / parseInt(document.getElementById("myElement").width)) * map.length)] = "rgba(0, 0, 0, 0)";
+                drawMap();
+            }
+        }
+
+        // Function to stop dragging
+        function closeDragElement() {
+            // Stop moving when mouse button is released:
+            isClicking = false;
+            document.onmouseup = null;
+            document.onmousemove = null;
+            actions.unshift(buffer)
+            buffer = []
+        }
+
+        // Add event listener to start dragging
+        element.onmousedown = dragMouseDown;
+
+        // Function to resize the element with the mouse wheel
+        element.addEventListener("wheel", function (event) {
+            // Prevent default behavior
+            event.preventDefault();
+
+            // Calculate new width and height based on mouse wheel delta
+            var delta = event.deltaY;
+            var newWidth = element.width + delta / 10;
+            var newHeight = element.height + delta / 10;
+
+            // Set minimum size to prevent element from becoming too small
+            if (newWidth > spriteS - 1 && newHeight > spriteS - 1) {
+                // Calculate new top and left positions to keep the center of the element in the same place
+                var newTop = element.offsetTop - delta / 20;
+                var newLeft = element.offsetLeft - delta / 20;
+
+                element.width = (newWidth).toFixed(0);
+                element.height = (newHeight).toFixed(0);
+                element.style.top = newTop + "px";
+                element.style.left = newLeft + "px";
+            }
+            drawMap();
+
+        });
+        function drawMap() {
+            let realSize = parseInt(document.getElementById("myElement").width) / spriteS;
+            ctx.clearRect(0, 0, parseInt(document.getElementById("myElement").width), parseInt(document.getElementById("myElement").height))
+            for (let i = 0; i < map.length; i++) {
+                for (let i2 = 0; i2 < map[i].length; i2++) {
+                    ctx.fillStyle = map[i][i2];
+                    ctx.fillRect(i2 * realSize, i * realSize, realSize, realSize);
+                }
+            }
+        }
+        function download() {
+            let expC = document.getElementById("expC");
+            let expctx = expC.getContext("2d");
+            for (let i = 0; i < map.length; i++) {
+                for (let i2 = 0; i2 < map[i].length; i2++) {
+                    expctx.fillStyle = map[i][i2]
+                    expctx.fillRect(i2, i, 1, 1);
+                }
+            }
+            var link = document.createElement('a');
+            link.download = 'filename.png';
+            link.href = expC.toDataURL()
+            link.click();
+        }
+        function resize() {
+            let newSize = prompt("Set naw size:", null);
+            if (newSize == "" || newSize === null) return;
+            spriteS = parseInt(newSize);
+            map = gen2dArray(spriteS, spriteS, "rgba(0, 0, 0, 0)");
+            canvas.width = spriteS;
+            canvas.height = spriteS;
+            let expC = document.getElementById("expC");
+            expC.width = spriteS;
+            expC.height = spriteS;
+        }
+        function getAlphaMap() {
+            let mapCopy = JSON.parse(JSON.stringify(map));
+            for (let i = 0; i < mapCopy.length; i++) {
+                for (let i2 = 0; i2 < mapCopy[i].length; i2++) {
+                    mapCopy[i][i2] = parseFloat(mapCopy[i][i2].split(", ")[3].split(")")[0]);
+                }
+            }
+            return JSON.stringify(mapCopy);
+        }
+        function cop() {
+            let div = document.createElement("div");
+            var text = getAlphaMap();
+            navigator.clipboard.writeText(text).then(function () {
+                //console.log('Async: Copying to clipboard was successful!');
+            }, function (err) {
+                console.error('Async: Could not copy text: ', err);
+            });
+        }
+    </script>
+
+</body>
+
+</html>

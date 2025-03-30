@@ -200,9 +200,7 @@
                 fillBuffer = [];
             }
         }
-
         function elementDrag(e) {
-
             e = e || window.event;
             e.preventDefault();
             if (mode == "move") {
@@ -250,7 +248,6 @@
                 drawMap();
             }
         }
-
         function closeDragElement() {
             isClicking = false;
             document.onmouseup = null;
@@ -258,18 +255,15 @@
             actions.unshift(buffer)
             buffer = []
         }
-
         element.onmousedown = dragMouseDown;
         element.addEventListener("wheel", function (event) {
             event.preventDefault();
             var delta = event.deltaY;
             var newWidth = element.width + delta / 10;
             var newHeight = element.height + delta / 10;
-
             if (newWidth > spriteS - 1 && newHeight > spriteS - 1) {
                 var newTop = element.offsetTop - delta / 20;
                 var newLeft = element.offsetLeft - delta / 20;
-
                 element.width = (newWidth).toFixed(0);
                 element.height = (newHeight).toFixed(0);
                 element.style.top = newTop + "px";

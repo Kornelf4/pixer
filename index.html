@@ -4,20 +4,74 @@
 <head>
     <title>Pixer</title>
     <style>
+        body {
+            height: 100%;
+            background-color: rgb(79, 74, 74);
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+        }
+
+        input[type="button"] {
+            margin: 10px;
+            padding: 5px;
+            color: white;
+            appearance: none;
+            background-color: rgb(79, 74, 74);
+            border-radius: 4px;
+            border: 3px solid white;
+            transition-duration: 0.5s;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+        }
+
+        input[type="color"] {
+            appearance: none;
+            -moz-appearance: none;
+            -webkit-appearance: none;
+            background: none;
+            border: 0;
+            cursor: pointer;
+            height: 40px;
+            padding: 0px;
+            width: 40px;
+            border: 3px solid white;
+            transition-duration: 0.5s;
+        }
+
+        input[type="button"]:hover,  input[type="color"]:hover{
+            background-color: white;
+            color: black;
+            box-shadow: 0 4px 8px 0 rgb(255, 255, 255), 0 6px 20px 0 rgb(255, 255, 255);
+        }
+
         #myElement {
             position: absolute;
-            background-color: white;
-            border: 1px solid black;
+            background-color: "rgba(0, 0, 0, 0)";
+            border: 5px solid white;
+            border-radius: 3px;
+            left: 500px;
+        }
+
+        #myElement:hover {
+            box-shadow: 0 2px 4px 0 rgb(255, 255, 255), 0 3px 10px 0 rgb(255, 255, 255);
         }
 
         #expC {
             display: none;
             image-rendering: pixelated;
         }
+
+        .inputCont {
+            border: 5px solid white;
+            padding: 3px;
+            margin: 2px;
+        }
     </style>
 </head>
 
 <body>
+    <div class="inputCont">
     <input type="button" value="Draw" onclick="mode = 'draw'">
     <input type="button" value="Move" onclick="mode = 'move'">
     <input type="button" value="Fill" onclick="mode = 'fill'">
@@ -29,9 +83,11 @@
     <input type="button" value="Resize & Clear" onclick="resize()">
     <input type="button" value="Copy AlphaMap to clipboard" onclick="cop()">
     <input type="color" id="colorC"><br>
-    Alpha: <input type="text" id="alp" width="25px" value="1">
-    Horizontal symmetry: <input type="checkbox" id="hor">
-    Vertical symmetry: <input type="checkbox" id="ver">
+    </div>
+    Alpha: <input type="text" id="alp" width="25px" value="1"><br>
+    Horizontal symmetry: <input type="checkbox" id="hor"><br>
+    Vertical symmetry: <input type="checkbox" id="ver"><br>
+    Enter alphaMap: <input type="text" id="alpImp" width="25px" value="1"><input type="button" value="Import" onclick="importo()">
     <canvas id="expC" width="64px" height="64px"></canvas>
     <canvas id="myElement" width="64px" height="64px"></canvas>
     <script>
@@ -42,7 +98,7 @@
                 this.to = to;
             }
         }
-        function hexCode(color){
+        function hexCode(color) {
             const rgba = color.replace(/^rgba?\(|\s+|\)$/g, '').split(',');
             const hex = `#${((1 << 24) + (parseInt(rgba[0]) << 16) + (parseInt(rgba[1]) << 8) + parseInt(rgba[2])).toString(16).slice(1)}`;
             return hex;
@@ -299,7 +355,7 @@
             link.click();
         }
         function resize() {
-            let newSize = prompt("Set naw size:", null);
+            let newSize = prompt("Set new size:", null);
             if (newSize == "" || newSize === null) return;
             spriteS = parseInt(newSize);
             map = gen2dArray(spriteS, spriteS, "rgba(0, 0, 0, 0)");
@@ -308,6 +364,14 @@
             let expC = document.getElementById("expC");
             expC.width = spriteS;
             expC.height = spriteS;
+        }
+        function resizeArg(a) {
+            map = gen2dArray(a, a, "rgba(0, 0, 0, 0)");
+            canvas.width = a;
+            canvas.height = a;
+            let expC = document.getElementById("expC");
+            expC.width = a;
+            expC.height = a;
         }
         function getAlphaMap() {
             let mapCopy = JSON.parse(JSON.stringify(map));
@@ -326,6 +390,28 @@
                 console.error('Async: Could not copy text: ', err);
             });
         }
+        function importo() {
+            let importText = document.getElementById("alpImp").value;
+            document.getElementById("alpImp").value = "";
+            importText = importText.split("\n").join("");
+            importText = importText.split(" ").join("");
+            try {
+                var impArr = JSON.parse(importText);
+            } catch(e) {
+                console.log("Invalid import");
+                return;
+            }
+            //resizeArg(impArr.length);
+            map = gen2dArray(impArr.length, impArr.length, "rgba(0, 0, 0, 0)");
+            spriteS = impArr.length;
+            for(let i = 0; i < impArr.length; i++) {
+                for(let i2 = 0; i2 < impArr[i].length; i2++) {
+                    map[i][i2] = hexToRgba(document.getElementById("colorC").value, impArr[i][i2]);
+                }
+            }
+            drawMap();
+        }
     </script>
 </body>
+
 </html>
